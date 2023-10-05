@@ -37,7 +37,7 @@ jobs:
           ls
           pwd
           cd test
-          cd /test
+          pwd
           test_files=$(find "/test" -type f -name '*_test.go' -exec basename {} \;)
           matrix='{"include":['
           first=true
