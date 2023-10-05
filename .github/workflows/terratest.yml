@@ -23,7 +23,7 @@ on:
 jobs:
   terratest:
     name: 'Run Go Tests'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
  
