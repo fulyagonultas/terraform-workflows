@@ -1,6 +1,5 @@
 name: Terratest
 
- 
 
 on:
   workflow_call:
@@ -17,71 +16,76 @@ on:
         required: false
         default: latest
         type: string
-
  
-
 jobs:
-  terratest:
-    name: 'Run Go Tests'
+  generate-test-matrix:
+    name: 'Generate Test Matrix'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
 
- 
+    steps:
+      - name: Set Matrix
+        working-directory: ${{ inputs.module-path }}/
+        id: set-matrix
+        run: |
+          ls
+          pwd
+          test_files=$(find "/test" -type f -name '*_test.go' -exec basename {} \;)
+          matrix='{"include":['
+          first=true
+          for test_file in $test_files; do
+            if [ "$first" = false ]; then
+              matrix+=','
+            fi
+            matrix+='{"test_file":"'${test_file}'"}'
+            first=false
+          done
+          matrix+=']}'
+          echo "::set-output name=matrix::${matrix}"
+
+  run-terratest:
+    name: 'Run Terratest'
+    needs: generate-test-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix: ${{fromJson(needs.generate-test-matrix.outputs.matrix)}}
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
-
  
-
       - name: Go setup
         uses: actions/setup-go@v4
         with:
-          token: ${{ secrets.PAT_TOKEN }}
           go-version: 'stable'
-
  
-
       - name: Node.js setup
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
- 
-
       - name: Terraform setup
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: ${{ inputs.terraform-version }}
-
  
-
       - name: Terraform init
         working-directory: ${{ inputs.module-path }}/
         run: terraform init
-
  
-
       - name: Setup Dependencies
         working-directory: ${{ inputs.terratest-path }}/
         run: |
           repo_url=$(git config --get remote.origin.url)
           repo_name=$(basename -s .git $repo_url)
-
- 
-
           go mod init $repo_name
           go mod tidy
-
  
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-
- 
-
       - name: Run Go Tests
         working-directory: ${{ inputs.terratest-path }}
-        run: go test -v -timeout 30m
+        run: go test -v -timeout 30m ./ -run ${{ matrix.test_file }}
