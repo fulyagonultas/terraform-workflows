@@ -29,13 +29,14 @@ jobs:
 
       - name: Checkout source code
         uses: actions/checkout@v4
-        
+
       - name: Set Matrix
         working-directory: ${{ inputs.module-path }}/
         id: set-matrix
         run: |
           ls
           pwd
+          cd test
           cd /test
           test_files=$(find "/test" -type f -name '*_test.go' -exec basename {} \;)
           matrix='{"include":['
