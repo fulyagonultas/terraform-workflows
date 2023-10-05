@@ -1,0 +1,87 @@
+name: Terratest
+
+ 
+
+on:
+  workflow_call:
+    inputs:
+      terratest-path:
+        required: false
+        default: "test/"
+        type: string
+      module-path:
+        required: false
+        default: "."
+        type: string
+      terraform-version:
+        required: false
+        default: latest
+        type: string
+
+ 
+
+jobs:
+  terratest:
+    name: 'Run Go Tests'
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+ 
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+ 
+
+      - name: Go setup
+        uses: actions/setup-go@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          go-version: 'stable'
+
+ 
+
+      - name: Node.js setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+ 
+
+      - name: Terraform setup
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+
+ 
+
+      - name: Terraform init
+        working-directory: ${{ inputs.module-path }}/
+        run: terraform init
+
+ 
+
+      - name: Setup Dependencies
+        working-directory: ${{ inputs.terratest-path }}/
+        run: |
+          repo_url=$(git config --get remote.origin.url)
+          repo_name=$(basename -s .git $repo_url)
+
+ 
+
+          go mod init $repo_name
+          go mod tidy
+
+ 
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+
+ 
+
+      - name: Run Go Tests
+        working-directory: ${{ inputs.terratest-path }}
+        run: go test -v -timeout 30m

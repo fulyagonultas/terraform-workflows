@@ -1,0 +1,44 @@
+name: Terraform Validate 
+
+on: 
+  workflow_call: 
+    inputs:
+      terraform-path: 
+        required: false 
+        default: "." 
+        type: string 
+      terraform-version: 
+        required: false 
+        default: latest 
+        type: string 
+      continue-on-error: 
+        required: false 
+        default: false 
+        type: boolean 
+    secrets: 
+      TF_API_TOKEN: 
+        required: true
+  
+jobs: 
+  validate: 
+    name: 'Terraform Validate' 
+    runs-on: ubuntu-latest 
+    steps: 
+    - name: Checkout source code 
+      uses: actions/checkout@v3
+
+    - name: Setup terraform 
+      uses: hashicorp/setup-terraform@v2 
+      with: 
+        terraform_version: ${{ inputs.terraform-version }} 
+        cli_config_credentials_hostname: 'app.terraform.io' 
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }} 
+
+    - name: Terraform init 
+      working-directory: ${{ inputs.terraform-path }}/ 
+      run: terraform init
+
+    - name: Terraform validate 
+      working-directory: ${{ inputs.terraform-path }}/ 
+      run: terraform validate 
+      continue-on-error: ${{ inputs.continue-on-error }} 
