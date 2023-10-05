@@ -38,7 +38,7 @@ jobs:
           pwd
           cd test
           pwd
-          test_files=$(find "/test" -type f -name '*_test.go' -exec basename {} \;)
+          test_files=$(find "test" -type f -name '*_test.go' -exec basename {} \;)
           matrix='{"include":['
           first=true
           for test_file in $test_files; do
