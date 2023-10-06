@@ -91,5 +91,4 @@ jobs:
       - name: Run Go Tests
         working-directory: ${{ inputs.terratest-path }}
         run: |
-          test_file="${{ matrix.test_file }}"
-          go test -v -timeout 30m -run "${test_file%.go}"
+          go test -v -timeout 30m ./${{ matrix.test_file }}
