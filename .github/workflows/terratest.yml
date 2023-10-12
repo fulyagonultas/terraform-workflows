@@ -45,7 +45,7 @@ jobs:
             first=false
           done
           matrix+=']}'
-          echo "::set-output name=matrix::${matrix}"
+          echo "${matrix}" >> $GITHUB_ENV
 
   run-terratest:
     name: 'Run Terratest'
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
-      matrix: ${{fromJson(needs.generate-test-matrix.outputs.matrix)}}
+      matrix: ${{fromJson(env.matrix)}}
     env:
       GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
 
