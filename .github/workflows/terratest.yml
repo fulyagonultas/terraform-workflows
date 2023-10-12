@@ -1,3 +1,52 @@
+name: Terratest
+
+
+on:
+  workflow_call:
+    inputs:
+      terratest-path:
+        required: false
+        default: "test/"
+        type: string
+      module-path:
+        required: false
+        default: "."
+        type: string
+      terraform-version:
+        required: false
+        default: latest
+        type: string
+ 
+jobs:
+  generate-test-matrix:
+    name: 'Generate Test Matrix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set Matrix
+        working-directory: ${{ inputs.module-path }}/
+        id: set-matrix
+        run: |
+          test_files=$(find . -name '*_test.go' -exec basename {} \;)
+          matrix='{"include":['
+          first=true
+          for test_file in $test_files; do
+            if [ "$first" = false ]; then
+              matrix+=','
+            fi
+            matrix+='{"test_file":"'${test_file}'"}'
+            first=false
+          done
+          matrix+=']}'
+          echo "${matrix}" >> $GITHUB_ENV
+
 - name: Run Terratest
   needs: generate-test-matrix
   runs-on: self-hosted
