@@ -15,7 +15,7 @@ on:
         required: false
         default: latest
         type: string
- 
+
 jobs:
   generate-test-matrix:
     name: 'Generate Test Matrix'
@@ -25,7 +25,6 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
-
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -45,44 +44,44 @@ jobs:
           done
           matrix+=']}'
           echo "MATRIX=${matrix}" >> $GITHUB_ENV
-  
+
   run-terratest:
-    - name: Run Terratest
-      needs: generate-test-matrix
-      runs-on: ubuntu-latest
-      timeout-minutes: 30
-      strategy:
-        matrix: ${{ env.MATRIX }}
-      steps:
-        - name: Checkout source code
-          uses: actions/checkout@v4
-        - name: Go setup
-          uses: actions/setup-go@v4
-          with:
-            go-version: 1.21.1
-        - name: Node.js setup
-          uses: actions/setup-node@v3
-          with:
-            node-version: 18
-        - name: Terraform setup
-          uses: hashicorp/setup-terraform@v2
-          with:
-            terraform_version: ${{ inputs.terraform-version }}
-        - name: Terraform init
-          working-directory: ${{ inputs.module-path }}/
-          run: terraform init
-        - name: Setup Dependencies
-          working-directory: ${{ inputs.terratest-path }}/
-          run: |
-            repo_url=$(git config --get remote.origin.url)
-            repo_name=$(basename -s .git $repo_url)
-            go mod init $repo_name
-            go mod tidy
-        - name: Authenticate to Google Cloud
-          uses: google-github-actions/auth@v1
-          with:
-            credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-        - name: Run Go Tests
-          working-directory: ${{ inputs.terratest-path }}
-          run: |
-            go test -v -timeout 30m ./${{ matrix.test_file }}
+    name: 'Run Terratest'
+    needs: generate-test-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix: ${{ env.MATRIX }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      - name: Go setup
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.1
+      - name: Node.js setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Terraform setup
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+      - name: Terraform init
+        working-directory: ${{ inputs.module-path }}/
+        run: terraform init
+      - name: Setup Dependencies
+        working-directory: ${{ inputs.terratest-path }}/
+        run: |
+          repo_url=$(git config --get remote.origin.url)
+          repo_name=$(basename -s .git $repo_url)
+          go mod init $repo_name
+          go mod tidy
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      - name: Run Go Tests
+        working-directory: ${{ inputs.terratest-path }}
+        run: |
+          go test -v -timeout 30m ./${{ matrix.test_file }}
