@@ -47,7 +47,7 @@ jobs:
 
       - name: Echo JSON file
         run: |
-          echo ${{ needs.generate-test-matrix.outputs.matrix }}
+          echo "${{ fromJson(needs.generate-test-matrix.outputs.matrix) }}"
 
   run-terratest:
     name: 'Run Terratest'
