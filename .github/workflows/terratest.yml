@@ -33,17 +33,21 @@ jobs:
         id: set-matrix
         run: |
           test_files=$(find . -name '*_test.go' -exec basename {} \;)
-          matrix='{"include":['
-          first=true
-          for test_file in $test_files; do
-            if [ "$first" = false ]; then
-              matrix+=','
-            fi
-            matrix+='{"test_file":"'${test_file}'"}'
-            first=false
-          done
-          matrix+=']}'
-          echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
+          if [ -z "$test_files" ]; then
+            echo "No test files found. Skipping subsequent jobs"
+          else
+            matrix='{"include":['
+            first=true
+            for test_file in $test_files; do
+              if [ "$first" = false ]; then
+                matrix+=','
+              fis
+              matrix+='{"test_file":"'${test_file}'"}'
+              first=false
+            done
+            matrix+=']}'
+            echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
+          fi
 
   run-terratest:
     name: 'Run Terratest'
