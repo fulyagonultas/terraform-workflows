@@ -45,9 +45,9 @@ jobs:
           matrix+=']}'
           echo "MATRIX=matrix" >> "$GITHUB_OUTPUT"
 
-        - name: Echo JSON file
-          run: |
-            echo ${{ needs.generate-test-matrix.outputs.matrix }}
+      - name: Echo JSON file
+        run: |
+          echo ${{ needs.generate-test-matrix.outputs.matrix }}
 
   run-terratest:
     name: 'Run Terratest'
