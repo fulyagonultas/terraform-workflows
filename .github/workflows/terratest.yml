@@ -1,6 +1,5 @@
 name: Terratest
 
-
 on:
   workflow_call:
     inputs:
@@ -45,15 +44,14 @@ jobs:
             first=false
           done
           matrix+=']}'
-          echo "${matrix}" >> $GITHUB_ENV
+          echo "MATRIX=${matrix}" >> $GITHUB_ENV
 
     - name: Run Terratest
       needs: generate-test-matrix
-      runs-on: self-hosted
+      runs-on: ubuntu-latest
       timeout-minutes: 30
       strategy:
-        matrix:
-          include: ${{ env.matrix }}
+        matrix: ${{ env.MATRIX }}
       steps:
         - name: Checkout source code
           uses: actions/checkout@v4
