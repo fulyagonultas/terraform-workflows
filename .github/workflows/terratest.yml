@@ -46,7 +46,7 @@ jobs:
           matrix+=']}'
           echo "MATRIX=${matrix}" >> $GITHUB_ENV
   
-  run.terratest:
+  run-terratest:
     - name: Run Terratest
       needs: generate-test-matrix
       runs-on: ubuntu-latest
