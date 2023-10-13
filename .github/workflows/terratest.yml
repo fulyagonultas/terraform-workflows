@@ -47,7 +47,6 @@ jobs:
             done
             matrix+=']}'
             echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
-            echo "MATRIX=${matrix}" >> "$GITHUB_ENV"
           fi
 
   run-terratest:
@@ -55,7 +54,7 @@ jobs:
     needs: generate-test-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: env.MATRIX != ''
+    if: needs.generate-test-matrix.outputs.matrix != ''
     strategy:
       matrix:
         test_file: ${{fromJson(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
