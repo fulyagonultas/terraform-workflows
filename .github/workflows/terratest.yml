@@ -51,7 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
-      matrix: ${{fromJson(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
+      matrix:
+        test_file: ${{fromJson(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
