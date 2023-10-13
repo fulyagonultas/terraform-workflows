@@ -43,7 +43,7 @@ jobs:
             first=false
           done
           matrix+=']}'
-          echo "MATRIX=matrix" >> "$GITHUB_ENV"
+          echo "MATRIX=matrix" >> "$GITHUB_OUTPUT"
 
   run-terratest:
     name: 'Run Terratest'
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
-      matrix: ${{fromJson($MATRIX)}}
+      matrix: ${{fromJson(needs.generate-test-matrix.outputs.matrix)}}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
