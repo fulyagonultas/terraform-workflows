@@ -41,7 +41,7 @@ jobs:
             for test_file in $test_files; do
               if [ "$first" = false ]; then
                 matrix+=','
-              fis
+              fi
               matrix+='{"test_file":"'${test_file}'"}'
               first=false
             done
