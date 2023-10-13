@@ -43,7 +43,7 @@ jobs:
             first=false
           done
           matrix+=']}'
-          echo "MATRIX=matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix" >> "$GITHUB_OUTPUT"
           echo "Generated matrix: $matrix"
           cat "$GITHUB_OUTPUT"
 
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
-      matrix: ${{ fromJson(needs.generate-test-matrix.outputs.matrix).include }}
+      matrix: ${{ fromJson(needs.generate-test-matrix.outputs.matrix) }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
