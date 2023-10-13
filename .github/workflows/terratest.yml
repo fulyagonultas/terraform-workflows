@@ -43,7 +43,7 @@ jobs:
             first=false
           done
           matrix+=']}'
-          echo "MATRIX=${matrix}" >> $GITHUB_ENV
+          echo "MATRIX=${matrix}" >> "$GITHUB_ENV"
 
   run-terratest:
     name: 'Run Terratest'
