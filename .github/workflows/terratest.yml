@@ -76,6 +76,9 @@ jobs:
       - name: Terraform init
         working-directory: ${{ inputs.module-path }}/
         run: terraform init
+      - name: Set Go Proxy  # Add this step to set the Go proxy
+        run: go env -w GOPROXY=https://proxy.golang.org
+      - name: Setup Dependencies
       - name: Setup Dependencies
         working-directory: ${{ inputs.terratest-path }}/
         run: |
