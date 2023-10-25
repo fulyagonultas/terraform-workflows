@@ -15,7 +15,6 @@ on:
         required: false
         default: latest
         type: string
-s
 jobs:
   check-for-tests:
     name: 'Check for Tests'
