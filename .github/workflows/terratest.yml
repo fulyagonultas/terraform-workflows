@@ -27,16 +27,12 @@ jobs:
         id: find-tests
         run: |
           if [ -n "$(find . -name '*_test.go' -exec basename {} \;)" ]; then
-            echo "GITHUB_OUTPUT=terratest"
+            echo "terratest" >> "$GITHUB_OUTPUT"
           elif [ -n "$(find . -name '*.tftest.hcl' -exec basename {} \;)" ]; then
-            echo "GITHUB_OUTPUT=hcl-testing"
+            echo "hcl-testing" >> "$GITHUB_OUTPUT"
           else
-            echo "GITHUB_OUTPUT=none"
+            echo "none" >> "$GITHUB_OUTPUT"
           fi
-      - name: Debug GITHUB_OUTPUT
-        run: echo "$GITHUB_OUTPUT"
-
-
       - name: Notify Next Job
         if: needs.check-for-tests.outputs.GITHUB_OUTPUT == 'none'
         run: |
@@ -49,8 +45,6 @@ jobs:
     timeout-minutes: 30
     if: needs.check-for-tests.outputs.GITHUB_OUTPUT == 'terratest'
     steps:
-      - name: Debug GITHUB_OUTPUT in run-terratest
-        run: echo "GITHUB_OUTPUT in run-terratest $GITHUB_OUTPUT"
       - name: Generate Test Matrix
         id: set-matrix
         run: |
