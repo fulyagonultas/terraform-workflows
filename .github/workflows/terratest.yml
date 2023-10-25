@@ -21,8 +21,6 @@ jobs:
     name: 'Check for Tests'
     runs-on: ubuntu-latest
     outputs:
-      found-tests: ${{ steps.find-tests.outputs.found-tests }}
-    env:
       GITHUB_OUTPUT: ${{ steps.set-matrix.outputs.GITHUB_OUTPUT }}
     steps:
       - name: Checkout source code
