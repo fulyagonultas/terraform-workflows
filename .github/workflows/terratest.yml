@@ -53,7 +53,7 @@ jobs:
     depends-on: check-for-tests
     steps:
       - name: Debug GITHUB_OUTPUT in run-terratest
-        run: echo "GITHUB_OUTPUT in run-terratest: $GITHUB_OUTPUT"
+        run: echo "GITHUB_OUTPUT in run-terratest $GITHUB_OUTPUT"
       - name: Generate Test Matrix
         id: set-matrix
         run: |
