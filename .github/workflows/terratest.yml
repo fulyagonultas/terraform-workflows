@@ -27,11 +27,11 @@ jobs:
         id: find-tests
         run: |
           if [ -n "$(find . -name '*_test.go' -exec basename {} \;)" ]; then
-            echo "terratest" >> "$GITHUB_OUTPUT"
+            echo "GITHUB_OUTPUT=terratest" >> "$GITHUB_OUTPUT"
           elif [ -n "$(find . -name '*.tftest.hcl' -exec basename {} \;)" ]; then
-            echo "hcl-testing" >> "$GITHUB_OUTPUT"
+            echo "GITHUB_OUTPUT=hcl-testing" >> "$GITHUB_OUTPUT"
           else
-            echo "none" >> "$GITHUB_OUTPUT"
+            echo "GITHUB_OUTPUT=none" >> "$GITHUB_OUTPUT"
           fi
       - name: Notify Next Job
         if: needs.check-for-tests.outputs.GITHUB_OUTPUT == 'none'
