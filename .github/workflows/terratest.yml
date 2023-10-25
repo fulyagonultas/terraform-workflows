@@ -35,6 +35,9 @@ jobs:
           else
             echo "GITHUB_OUTPUT=none" >> $GITHUB_ENV
           fi
+      - name: Debug GITHUB_OUTPUT
+        run: echo "GITHUB_OUTPUT: $GITHUB_OUTPUT"
+
 
       - name: Notify Next Job
         if: needs.check-for-tests.outputs.GITHUB_OUTPUT == 'none'
