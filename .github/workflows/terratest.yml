@@ -20,8 +20,6 @@ jobs:
   check-for-tests:
     name: 'Check for Tests'
     runs-on: ubuntu-latest
-    outputs:
-      GITHUB_OUTPUT: ${{ steps.set-matrix.outputs.GITHUB_OUTPUT }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -29,11 +27,11 @@ jobs:
         id: find-tests
         run: |
           if [ -n "$(find . -name '*_test.go' -exec basename {} \;)" ]; then
-            echo "GITHUB_OUTPUT=terratest" >> $GITHUB_ENV
+            echo "GITHUB_OUTPUT=terratest"
           elif [ -n "$(find . -name '*.tftest.hcl' -exec basename {} \;)" ]; then
-            echo "GITHUB_OUTPUT=hcl-testing" >> $GITHUB_ENV
+            echo "GITHUB_OUTPUT=hcl-testing"
           else
-            echo "GITHUB_OUTPUT=none" >> $GITHUB_ENV
+            echo "GITHUB_OUTPUT=none"
           fi
       - name: Debug GITHUB_OUTPUT
         run: echo "$GITHUB_OUTPUT"
