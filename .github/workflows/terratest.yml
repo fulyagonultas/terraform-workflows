@@ -50,7 +50,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: needs.check-for-tests.outputs.GITHUB_OUTPUT == 'terratest'
-    depends-on: check-for-tests
     steps:
       - name: Debug GITHUB_OUTPUT in run-terratest
         run: echo "GITHUB_OUTPUT in run-terratest $GITHUB_OUTPUT"
@@ -115,7 +114,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: needs.check-for-tests.outputs.GITHUB_OUTPUT == 'hcl-testing'
-    depends-on: check-for-tests
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
