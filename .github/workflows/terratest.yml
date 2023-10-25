@@ -20,6 +20,8 @@ jobs:
   check-for-tests:
     name: 'Check for Tests'
     runs-on: ubuntu-latest
+    outputs:
+      found-tests: ${{ steps.find-tests.outputs.found-tests }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -34,7 +36,7 @@ jobs:
             echo "GITHUB_OUTPUT=none" >> "$GITHUB_OUTPUT"
           fi
       - name: Notify Next Job
-        if: needs.check-for-tests.outputs.GITHUB_OUTPUT == 'none'
+        if: needs.check-for-tests.outputs.found-tests == 'none'
         run: |
           echo "Next job will be skipped as there are no test files."
 
@@ -43,7 +45,7 @@ jobs:
     needs: check-for-tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: needs.check-for-tests.outputs.GITHUB_OUTPUT == terratest
+    if: needs.check-for-tests.outputs.found-tests == 'terratest'
     steps:
       - name: Generate Test Matrix
         id: set-matrix
@@ -105,7 +107,7 @@ jobs:
     needs: check-for-tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: needs.check-for-tests.outputs.GITHUB_OUTPUT == hcl-testing
+    if: needs.check-for-tests.outputs.found-tests == 'hcl-testing'
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
