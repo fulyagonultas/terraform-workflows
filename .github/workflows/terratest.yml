@@ -3,7 +3,7 @@ name: Testing
 on:
   workflow_call:
     inputs:
-      terratest-path:
+      test-path:
         required: false
         default: "test/"
         type: string
@@ -16,43 +16,34 @@ on:
         default: latest
         type: string
 jobs:
-  check-for-tests:
-    name: 'Check for Tests'
+  generate-test-matrix:
+    name: 'Generate Test Matrix'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     outputs:
-      found-tests: ${{ steps.find-tests.outputs.found-tests }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+ 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
-      - name: Find .test.go and .tftest.hcl files
-        id: find-tests
-        run: |
-          if [ -n "$(find . -name '*_test.go' -exec basename {} \;)" ]; then
-            echo "{found-tests}=${terratest}" >> "$GITHUB_OUTPUT"
-          elif [ -n "$(find . -name '*.tftest.hcl' -exec basename {} \;)" ]; then
-            echo "{found-tests}=${hcl-testing}" >> "$GITHUB_OUTPUT"
-          else
-            echo "{found-tests}=${none}" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Notify Next Job
-        if: needs.check-for-tests.outputs.found-tests == 'none'
-        run: |
-          echo "Next job will be skipped as there are no test files."
-
-  run-terratest:
-    name: 'Run Terratest'
-    needs: check-for-tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    if: needs.check-for-tests.outputs.found-tests == 'terratest'
-    steps:
-      - name: Generate Test Matrix
+      - name: Set Matrix
+        working-directory: ${{ inputs.module-path }}/
         id: set-matrix
         run: |
           test_files=$(find . -name '*_test.go' -exec basename {} \;)
-          if [ -z "$test_files" ]; then
-            echo "No test files found. Skipping subsequent jobs"
-          else
+          if [ -n "$(find . -name '*_test.go' -exec basename {} \;)" ]; then
+            matrix='{"include":['
+            first=true
+            for test_file in $test_files; do
+              if [ "$first" = false ]; then
+                matrix+=','
+              fi
+              matrix+='{"test_file":"'${test_file}'"}'
+              first=false
+            done
+            matrix+=']}'
+            echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
+          elif [ -n "$(find . -name '*.tftest.hcl' -exec basename {} \;)" ]; then
             matrix='{"include":['
             first=true
             for test_file in $test_files; do
@@ -65,25 +56,44 @@ jobs:
             matrix+=']}'
             echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
           fi
+
+  run-terratest:
+    name: 'Run Terratest'
+    needs: generate-test-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: contains(needs.generate-test-matrix.outputs.matrix, '_test.go')
+    strategy:
+      matrix:
+        test_file: ${{fromJSON(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
+ 
+    steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+ 
       - name: Go setup
         uses: actions/setup-go@v4
         with:
           go-version: 1.21.1
+          cache: 'false'
+ 
       - name: Node.js setup
         uses: actions/setup-node@v3
         with:
           node-version: 18
+ 
       - name: Terraform setup
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: ${{ inputs.terraform-version }}
+ 
       - name: Terraform init
         working-directory: ${{ inputs.module-path }}/
         run: terraform init
-      - name: Set Go Proxy  # Add this step to set the Go proxy
+ 
+      - name: Set Go Proxy
         run: go env -w GOPROXY=https://proxy.golang.org
+ 
       - name: Setup Dependencies
         working-directory: ${{ inputs.terratest-path }}/
         run: |
@@ -91,22 +101,48 @@ jobs:
           repo_name=$(basename -s .git $repo_url)
           go mod init $repo_name
           go mod tidy
+ 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
+ 
       - name: Run Go Tests
         working-directory: ${{ inputs.terratest-path }}
         run: |
           go test -v -timeout 30m ./${{ matrix.test_file }}
+
   run-hcl-testing:
     name: 'Run HCL Testing'
-    needs: check-for-tests
+    needs: generate-test-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: needs.check-for-tests.outputs.found-tests == 'hcl-testing'
+    if: contains(needs.generate-test-matrix.outputs.matrix, '.tftest.hcl')
+    strategy:
+      matrix:
+        test_file: ${{fromJSON(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
+  
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+      - name: Terraform setup
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+      - name: Terraform init
+        working-directory: ${{ inputs.module-path }}/
+        run: terraform init
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      - name: Run HCL Tests
+        working-directory: ${{ inputs.test-path }}
+        run: |
+          terraform test ./${{ matrix.test_file }}
+
+
+
+
