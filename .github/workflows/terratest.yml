@@ -1,4 +1,4 @@
-name: Terratest
+name: Testing
 
 on:
   workflow_call:
@@ -17,19 +17,38 @@ on:
         type: string
 
 jobs:
-  generate-test-matrix:
-    name: 'Generate Test Matrix'
+  check-for-tests:
+    name: 'Check for Tests'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-
+      found-tests: ${{ steps.find-tests.outputs.found-tests }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+      - name: Find .test.go and .tftest.hcl files
+        id: find-tests
+        run: |
+          if [ -n "$(find . -name '*_test.go' -exec basename {} \;)" ]; then
+            echo "::set-output name=found-tests::terratest"
+          elif [ -n "$(find . -name '*.tftest.hcl' -exec basename {} \;)" ]; then
+            echo "::set-output name=found-tests::hcl-testing"
+          else
+            echo "::set-output name=found-tests::none"
+          fi
 
-      - name: Set Matrix
-        working-directory: ${{ inputs.module-path }}/
+      - name: Notify Next Job
+        if: needs.check-for-tests.outputs.found-tests == 'none'
+        run: |
+          echo "Next job will be skipped as there are no test files."
+
+  run-terratest:
+    name: 'Run Terratest'
+    needs: check-for-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: needs.check-for-tests.outputs.found-tests == 'terratest'
+    steps:
+      - name: Generate Test Matrix
         id: set-matrix
         run: |
           test_files=$(find . -name '*_test.go' -exec basename {} \;)
@@ -48,17 +67,6 @@ jobs:
             matrix+=']}'
             echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
           fi
-
-  run-terratest:
-    name: 'Run Terratest'
-    needs: generate-test-matrix
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    if: needs.generate-test-matrix.outputs.matrix != ''
-    strategy:
-      matrix:
-        test_file: ${{fromJson(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
-    steps:
       - name: Checkout source code
         uses: actions/checkout@v4
       - name: Go setup
@@ -95,3 +103,12 @@ jobs:
         working-directory: ${{ inputs.terratest-path }}
         run: |
           go test -v -timeout 30m ./${{ matrix.test_file }}
+  run-hcl-testing:
+    name: 'Run HCL Testing'
+    needs: check-for-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: needs.check-for-tests.outputs.found-tests == 'hcl-testing'
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
