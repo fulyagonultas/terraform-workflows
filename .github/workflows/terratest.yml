@@ -1,5 +1,5 @@
-name: Testing
-
+name: Module Testing
+ 
 on:
   workflow_call:
     inputs:
@@ -22,7 +22,6 @@ jobs:
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
- 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -30,35 +29,35 @@ jobs:
         working-directory: ${{ inputs.module-path }}/
         id: set-matrix
         run: |
-          test_files=$(find . -name '*_test.go' -exec basename {} \;)
-          if [ -n "$(find . -name '*_test.go' -exec basename {} \;)" ]; then
-            matrix='{"include":['
-            first=true
-            for test_file in $test_files; do
-              if [ "$first" = false ]; then
-                matrix+=','
-              fi
-              matrix+='{"test_file":"'${test_file}'"}'
-              first=false
-            done
-            matrix+=']}'
-            echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
-          elif [ -n "$(find . -name '*.tftest.hcl' -exec basename {} \;)" ]; then
-            matrix='{"include":['
-            first=true
-            for test_file in $test_files; do
-              if [ "$first" = false ]; then
-                matrix+=','
-              fi
-              matrix+='{"test_file":"'${test_file}'"}'
-              first=false
-            done
-            matrix+=']}'
-            echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
-          fi
+          matrix='{"include":['
+          first=true
 
+          # Look for Go test files
+          test_files=$(find . -name '*_test.go' -exec basename {} \;)
+          for test_file in $test_files; do
+            if [ "$first" = false ]; then
+              matrix+=','
+            fi
+            matrix+='{"test_file":"'${test_file}'"}'
+            first=false
+          done
+
+          # Look for Terraform HCL test files
+          test_files=$(find . -name '*.tftest.hcl' -exec basename {} \;)
+          for test_file in $test_files; do
+            if [ "$first" = false ]; then
+              matrix+=','
+            fi
+            matrix+='{"test_file":"'${test_file}'"}'
+            first=false
+          done
+
+          matrix+=']}'
+          echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
+
+ 
   run-terratest:
-    name: 'Run Terratest'
+    name: 'Terratest'
     needs: generate-test-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -66,11 +65,9 @@ jobs:
     strategy:
       matrix:
         test_file: ${{fromJSON(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
- 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
- 
       - name: Go setup
         uses: actions/setup-go@v4
         with:
@@ -81,7 +78,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
- 
       - name: Terraform setup
         uses: hashicorp/setup-terraform@v2
         with:
@@ -95,7 +91,7 @@ jobs:
         run: go env -w GOPROXY=https://proxy.golang.org
  
       - name: Setup Dependencies
-        working-directory: ${{ inputs.terratest-path }}/
+        working-directory: ${{ inputs.test-path }}/
         run: |
           repo_url=$(git config --get remote.origin.url)
           repo_name=$(basename -s .git $repo_url)
@@ -106,16 +102,17 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+ 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
  
       - name: Run Go Tests
-        working-directory: ${{ inputs.terratest-path }}
+        working-directory: ${{ inputs.test-path }}
         run: |
           go test -v -timeout 30m ./${{ matrix.test_file }}
-
-  run-hcl-testing:
-    name: 'Run HCL Testing'
+ 
+  run-hcl:
+    name: 'HCL'
     needs: generate-test-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -123,7 +120,7 @@ jobs:
     strategy:
       matrix:
         test_file: ${{fromJSON(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
-  
+ 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -131,18 +128,17 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: ${{ inputs.terraform-version }}
+ 
       - name: Terraform init
         working-directory: ${{ inputs.module-path }}/
         run: terraform init
+ 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+ 
       - name: Run HCL Tests
         working-directory: ${{ inputs.test-path }}
         run: |
           terraform test ./${{ matrix.test_file }}
-
-
-
-
