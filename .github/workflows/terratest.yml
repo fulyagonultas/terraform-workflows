@@ -18,7 +18,7 @@ on:
 jobs:
   generate-test-matrix:
     name: 'Generate Test Matrix'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -31,7 +31,6 @@ jobs:
         run: |
           matrix='{"include":['
           first=true
-
           # Look for Go test files
           test_files=$(find . -name '*_test.go' -exec basename {} \;)
           for test_file in $test_files; do
@@ -41,7 +40,6 @@ jobs:
             matrix+='{"test_file":"'${test_file}'"}'
             first=false
           done
-
           # Look for Terraform HCL test files
           test_files=$(find . -name '*.tftest.hcl' -exec basename {} \;)
           for test_file in $test_files; do
@@ -51,15 +49,13 @@ jobs:
             matrix+='{"test_file":"'${test_file}'"}'
             first=false
           done
-
           matrix+=']}'
           echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
-
  
   run-terratest:
     name: 'Terratest'
     needs: generate-test-matrix
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 30
     if: contains(needs.generate-test-matrix.outputs.matrix, '_test.go')
     strategy:
@@ -114,7 +110,7 @@ jobs:
   run-hcl:
     name: 'HCL'
     needs: generate-test-matrix
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 30
     if: contains(needs.generate-test-matrix.outputs.matrix, '.tftest.hcl')
     strategy:
@@ -124,6 +120,10 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+      - name: Node.js setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
       - name: Terraform setup
         uses: hashicorp/setup-terraform@v2
         with:
@@ -131,7 +131,9 @@ jobs:
  
       - name: Terraform init
         working-directory: ${{ inputs.module-path }}/
-        run: terraform init
+        run: |
+          echo "#This is a dummmy file to always initialize the modules in the root directory" > dummy.tf
+          terraform init
  
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
@@ -139,6 +141,6 @@ jobs:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
  
       - name: Run HCL Tests
-        working-directory: ${{ inputs.test-path }}
+        working-directory: ${{ inputs.module-path }}
         run: |
-          terraform test ./${{ matrix.test_file }}
+          terraform test -filter=${{ matrix.test_file }} -var-file="tests/variables.tfvars" -verbose
