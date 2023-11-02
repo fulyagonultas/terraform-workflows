@@ -18,7 +18,7 @@ on:
 jobs:
   generate-test-matrix:
     name: 'Generate Test Matrix'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -55,7 +55,7 @@ jobs:
   run-terratest:
     name: 'Terratest'
     needs: generate-test-matrix
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     if: contains(needs.generate-test-matrix.outputs.matrix, '_test.go')
     strategy:
@@ -110,7 +110,7 @@ jobs:
   run-hcl:
     name: 'HCL'
     needs: generate-test-matrix
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     if: contains(needs.generate-test-matrix.outputs.matrix, '.tftest.hcl')
     strategy:
