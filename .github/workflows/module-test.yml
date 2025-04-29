@@ -1,0 +1,101 @@
+name: Module Testing
+
+on:
+  workflow_call:
+    inputs:
+      test-path:
+        required: false
+        default: "test/"
+        type: string
+      module-path:
+        required: false
+        default: "."
+        type: string
+      terraform-version:
+        required: false
+        default: latest
+        type: string
+        
+jobs:
+  generate-test-matrix:
+    name: 'Generate Test Matrix'
+    runs-on:
+      - ${{ startsWith(github.event.repository.name, 'terraform-azure-dbg') && 'azure' || 'self-hosted' }}
+    timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      - name: Set Matrix
+        working-directory: ${{ inputs.module-path }}/
+        id: set-matrix
+        run: |
+          matrix='{"include":['
+          first=true
+          # Look for Go test files
+          test_files=$(find . -name '*_test.go' -exec basename {} \;)
+          for test_file in $test_files; do
+            if [ "$first" = false ]; then
+              matrix+=','
+            fi
+            matrix+='{"test_file":"'${test_file}'"}'
+            first=false
+          done
+          # Look for Terraform HCL test files
+          test_files=$(find . -name '*.tftest.hcl' -exec basename {} \;)
+          for test_file in $test_files; do
+            if [ "$first" = false ]; then
+              matrix+=','
+            fi
+            matrix+='{"test_file":"'${test_file}'"}'
+            first=false
+          done
+          matrix+=']}'
+          echo "MATRIX=${matrix}" >> "$GITHUB_OUTPUT"
+
+  run-hcl:
+    name: 'HCL'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: generate-test-matrix
+    runs-on: self-hosted
+    env:
+      DEFAULT_CA_BUNDLE_PATH: "/etc/ssl/certs"
+      NODE_EXTRA_CA_CERTS: "/etc/ssl/certs/ca-certificates.crt"
+      REQUESTS_CA_BUNDLE: "/etc/ssl/certs/ca-certificates.crt"
+
+    timeout-minutes: 60
+    if: contains(needs.generate-test-matrix.outputs.matrix, '.tftest.hcl')
+    strategy:
+      # Don't fail fast so all tests can run and do their cleanup
+      fail-fast: false
+      matrix:
+        test_file: ${{fromJSON(needs.generate-test-matrix.outputs.MATRIX).include.*.test_file}}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Terraform setup
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_DEPLOYMENT_SA }}
+      - name: Terraform init
+        working-directory: ${{ inputs.module-path }}/
+        run: |
+          echo "#This is a dummmy file to always initialize the modules in the root directory" > dummy.tf
+          terraform init
+      - name: Run HCL Tests
+        working-directory: ${{ inputs.module-path }}
+        run: |
+          terraform test -filter=tests/${{ matrix.test_file }} -verbose
