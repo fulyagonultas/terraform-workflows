@@ -19,8 +19,7 @@ on:
 jobs:
   generate-test-matrix:
     name: 'Generate Test Matrix'
-    runs-on:
-      - ${{ startsWith(github.event.repository.name, 'terraform-azure-dbg') && 'azure' || 'self-hosted' }}
+    runs-on: self-hosted
     timeout-minutes: 30
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -61,10 +60,6 @@ jobs:
       id-token: 'write'
     needs: generate-test-matrix
     runs-on: self-hosted
-    env:
-      DEFAULT_CA_BUNDLE_PATH: "/etc/ssl/certs"
-      NODE_EXTRA_CA_CERTS: "/etc/ssl/certs/ca-certificates.crt"
-      REQUESTS_CA_BUNDLE: "/etc/ssl/certs/ca-certificates.crt"
 
     timeout-minutes: 60
     if: contains(needs.generate-test-matrix.outputs.matrix, '.tftest.hcl')
